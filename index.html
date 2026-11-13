@@ -604,221 +604,248 @@ Belum ada naskah yang di-generate. Silakan isi form di sebelah kiri dan klik "Ge
         insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "B0BEC5" }
       };
 
-      const doc = new Document({
-        sections: [{
-          properties: {
-            page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } }
-          },
+      const children = [
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
           children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 60 },
-              children: [
-                new TextRun({ text: "PEMERINTAH KOTA CIREBON\nDINAS PENDIDIKAN\n" + sch.name, bold: true, size: 24, font: "Arial" })
-              ]
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 180 },
-              children: [
-                new TextRun({ text: `Alamat: ${sch.address}, Kec. ${sch.kec}, Kota Cirebon\nPosel: sdnegeri@cirebonkota.go.id | Laman: disdik.cirebonkota.go.id`, italics: true, size: 17, font: "Arial", color: "666666" })
-              ]
-            }),
-            new Paragraph({
-              spacing: { after: 240 },
-              border: { bottom: { style: BorderStyle.DOUBLE, size: 12, color: "000000" } }
-            }),
+            new TextRun({ text: "PEMERINTAH KOTA CIREBON\nDINAS PENDIDIKAN\n" + sch.name, bold: true, size: 24, font: "Arial" })
+          ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 180 },
+          children: [
+            new TextRun({ text: `Alamat: ${sch.address}, Kec. ${sch.kec}, Kota Cirebon\nPosel: sdnegeri@cirebonkota.go.id | Laman: disdik.cirebonkota.go.id`, italics: true, size: 17, font: "Arial", color: "666666" })
+          ]
+        }),
+        new Paragraph({
+          spacing: { after: 240 },
+          border: { bottom: { style: BorderStyle.DOUBLE, size: 12, color: "000000" } }
+        }),
 
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 60 },
-              children: [
-                new TextRun({ text: `BUKTI FISIK INSTRUMEN JABAR BERAKSI - POIN ${poinNum}`, bold: true, size: 24, font: "Arial" })
-              ]
-            }),
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 300 },
-              children: [
-                new TextRun({ text: `INDIKATOR: ${title.toUpperCase()}\n(Berkas Bukti Fisik Lengkap & Instrumen Terverifikasi)`, bold: true, size: 19, font: "Arial", color: "0D47A1" })
-              ]
-            }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 60 },
+          children: [
+            new TextRun({ text: `BUKTI FISIK INSTRUMEN JABAR BERAKSI - ${customData ? customData.title.toUpperCase() : 'POIN ' + poinNum}`, bold: true, size: 24, font: "Arial" })
+          ]
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 300 },
+          children: [
+            new TextRun({ text: `INDIKATOR: ${title.toUpperCase()}\n(Berkas Bukti Fisik Terverifikasi Satuan Pendidikan)`, bold: true, size: 19, font: "Arial", color: "0D47A1" })
+          ]
+        })
+      ];
 
-            new Paragraph({
+      if (customData && customData.content) {
+        const rawLines = customData.content.split('\n');
+        for (const line of rawLines) {
+          const t = line.trim();
+          if (!t) {
+            children.push(new Paragraph({ spacing: { after: 80 } }));
+            continue;
+          }
+          if (t.startsWith('#') || t.startsWith('BAGIAN') || (t.toUpperCase() === t && t.length > 5 && !t.includes(':'))) {
+            children.push(new Paragraph({
               spacing: { before: 180, after: 100 },
-              children: [
-                new TextRun({ text: "BAGIAN I: STANDAR OPERASIONAL PROSEDUR (SOP)", bold: true, size: 21, color: "0D47A1" })
-              ]
-            }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: borderStyle,
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      width: { size: 25, type: WidthType.PERCENTAGE },
-                      shading: { fill: "F5F7FA" },
-                      children: [new Paragraph({ children: [new TextRun({ text: "1. Tujuan", bold: true, size: 17 })] })]
-                    }),
-                    new TableCell({
-                      width: { size: 75, type: WidthType.PERCENTAGE },
-                      children: [new Paragraph({ children: [new TextRun({ text: `Memberikan pedoman terstruktur dalam implementasi ${title} di lingkungan ${sch.name} secara aman, adil, konsisten, dan ramah anak.`, size: 17 })] })]
-                    })
-                  ]
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      width: { size: 25, type: WidthType.PERCENTAGE },
-                      shading: { fill: "F5F7FA" },
-                      children: [new Paragraph({ children: [new TextRun({ text: "2. Pelaksana", bold: true, size: 17 })] })]
-                    }),
-                    new TableCell({
-                      width: { size: 75, type: WidthType.PERCENTAGE },
-                      children: [new Paragraph({ children: [new TextRun({ text: "Kepala Sekolah, Seluruh Pendidik, Tenaga Kependidikan, dan Komite Sekolah.", size: 17 })] })]
-                    })
-                  ]
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      width: { size: 25, type: WidthType.PERCENTAGE },
-                      shading: { fill: "F5F7FA" },
-                      children: [new Paragraph({ children: [new TextRun({ text: "3. Prosedur Kerja", bold: true, size: 17 })] })]
-                    }),
-                    new TableCell({
-                      width: { size: 75, type: WidthType.PERCENTAGE },
-                      children: [new Paragraph({ children: [new TextRun({ text: "a. Sosialisasi berkala kepada seluruh warga sekolah dan paguyuban orang tua murid.\nb. Pelaksanaan terintegrasi dalam pembelajaran harian dan pembiasaan budaya sekolah.\nc. Pencatatan dan evaluasi rutin berkala setiap akhir pekan.", size: 17 })] })]
-                    })
-                  ]
-                })
-              ]
-            }),
+              children: [new TextRun({ text: t.replace(/^#+\s*/, ''), bold: true, size: 21, color: "0D47A1" })]
+            }));
+          } else {
+            children.push(new Paragraph({
+              spacing: { after: 80 },
+              children: [new TextRun({ text: t, size: 18, font: "Arial" })]
+            }));
+          }
+        }
+      } else {
+        children.push(
+          new Paragraph({
+            spacing: { before: 180, after: 100 },
+            children: [
+              new TextRun({ text: "BAGIAN I: STANDAR OPERASIONAL PROSEDUR (SOP)", bold: true, size: 21, color: "0D47A1" })
+            ]
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: borderStyle,
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 25, type: WidthType.PERCENTAGE },
+                    shading: { fill: "F5F7FA" },
+                    children: [new Paragraph({ children: [new TextRun({ text: "1. Tujuan", bold: true, size: 17 })] })]
+                  }),
+                  new TableCell({
+                    width: { size: 75, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ children: [new TextRun({ text: `Memberikan pedoman terstruktur dalam implementasi ${title} di lingkungan ${sch.name} secara aman, adil, konsisten, dan ramah anak.`, size: 17 })] })]
+                  })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 25, type: WidthType.PERCENTAGE },
+                    shading: { fill: "F5F7FA" },
+                    children: [new Paragraph({ children: [new TextRun({ text: "2. Pelaksana", bold: true, size: 17 })] })]
+                  }),
+                  new TableCell({
+                    width: { size: 75, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ children: [new TextRun({ text: "Kepala Sekolah, Seluruh Pendidik, Tenaga Kependidikan, dan Komite Sekolah.", size: 17 })] })]
+                  })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 25, type: WidthType.PERCENTAGE },
+                    shading: { fill: "F5F7FA" },
+                    children: [new Paragraph({ children: [new TextRun({ text: "3. Prosedur Kerja", bold: true, size: 17 })] })]
+                  }),
+                  new TableCell({
+                    width: { size: 75, type: WidthType.PERCENTAGE },
+                    children: [new Paragraph({ children: [new TextRun({ text: "a. Sosialisasi berkala kepada seluruh warga sekolah dan paguyuban orang tua murid.\nb. Pelaksanaan terintegrasi dalam pembelajaran harian dan pembiasaan budaya sekolah.\nc. Pencatatan dan evaluasi rutin berkala setiap akhir pekan.", size: 17 })] })]
+                  })
+                ]
+              })
+            ]
+          }),
+          new Paragraph({
+            spacing: { before: 240, after: 100 },
+            children: [
+              new TextRun({ text: "BAGIAN II: FORMAT BUKU CATATAN DAN LOG PEMANTAUAN", bold: true, size: 21, color: "0D47A1" })
+            ]
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: borderStyle,
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 16 })] })] }),
+                  new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Hari / Tanggal", bold: true, color: "FFFFFF", size: 16 })] })] }),
+                  new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Aktivitas Pembiasaan", bold: true, color: "FFFFFF", size: 16 })] })] }),
+                  new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Hasil Pengamatan", bold: true, color: "FFFFFF", size: 16 })] })] }),
+                  new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status", bold: true, color: "FFFFFF", size: 16 })] })] })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Senin, 14/09/2026", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Pelaksanaan program ${title} saat pembiasaan pagi.`, size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Peserta didik antusias dan tertib mengikuti panduan.", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Terlaksana", size: 16 })] })] })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "2", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Rabu, 07/10/2026", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Evaluasi berkala dan pengisian jurnal refleksi karakter.", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "95% siswa konsisten mempraktikkan sikap positif.", size: 16 })] })] }),
+                  new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Terlaksana", size: 16 })] })] })
+                ]
+              })
+            ]
+          }),
+          new Paragraph({
+            spacing: { before: 240, after: 100 },
+            children: [
+              new TextRun({ text: "BAGIAN III: DOKUMENTASI FOTO BUKTI FISIK", bold: true, size: 21, color: "0D47A1" })
+            ]
+          }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: borderStyle,
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    shading: { fill: "ECEFF1" },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 200, after: 200 },
+                        children: [new TextRun({ text: "[ TEMPELKAN FOTO DOKUMENTASI KEGIATAN 1 DI SINI ]\n\nKeterangan: Pelaksanaan kegiatan di lingkungan satuan pendidikan.", size: 16 })]
+                      })
+                    ]
+                  }),
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    shading: { fill: "ECEFF1" },
+                    children: [
+                      new Paragraph({
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 200, after: 200 },
+                        children: [new TextRun({ text: "[ TEMPELKAN FOTO DOKUMENTASI KEGIATAN 2 DI SINI ]\n\nKeterangan: Evaluasi bersama peserta didik dan dewan guru.", size: 16 })]
+                      })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        );
+      }
 
-            new Paragraph({
-              spacing: { before: 240, after: 100 },
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 240, after: 140 },
+          children: [
+            new TextRun({ text: `Cirebon, 13 November ${sch.year}`, size: 18 })
+          ]
+        }),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          borders: {
+            top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE }
+          },
+          rows: [
+            new TableRow({
               children: [
-                new TextRun({ text: "BAGIAN II: FORMAT BUKU CATATAN DAN LOG PEMANTAUAN", bold: true, size: 21, color: "0D47A1" })
-              ]
-            }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: borderStyle,
-              rows: [
-                new TableRow({
+                new TableCell({
+                  width: { size: 50, type: WidthType.PERCENTAGE },
                   children: [
-                    new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 16 })] })] }),
-                    new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Hari / Tanggal", bold: true, color: "FFFFFF", size: 16 })] })] }),
-                    new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Aktivitas Pembiasaan", bold: true, color: "FFFFFF", size: 16 })] })] }),
-                    new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Hasil Pengamatan", bold: true, color: "FFFFFF", size: 16 })] })] }),
-                    new TableCell({ shading: { fill: "1565C0" }, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status", bold: true, color: "FFFFFF", size: 16 })] })] })
-                  ]
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "1", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Senin, 14/09/2026", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Pelaksanaan program ${title} saat pembiasaan pagi.`, size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Peserta didik antusias dan tertib mengikuti panduan.", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Terlaksana", size: 16 })] })] })
-                  ]
-                }),
-                new TableRow({
-                  children: [
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "2", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Rabu, 07/10/2026", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "Evaluasi berkala dan pengisian jurnal refleksi karakter.", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: "95% siswa konsisten mempraktikkan sikap positif.", size: 16 })] })] }),
-                    new TableCell({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Terlaksana", size: 16 })] })] })
-                  ]
-                })
-              ]
-            }),
-
-            new Paragraph({
-              spacing: { before: 240, after: 100 },
-              children: [
-                new TextRun({ text: "BAGIAN III: DOKUMENTASI FOTO BUKTI FISIK", bold: true, size: 21, color: "0D47A1" })
-              ]
-            }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: borderStyle,
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      shading: { fill: "ECEFF1" },
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          spacing: { before: 200, after: 200 },
-                          children: [new TextRun({ text: "[ TEMPELKAN FOTO DOKUMENTASI KEGIATAN 1 DI SINI ]\n\nKeterangan: Pelaksanaan kegiatan di lingkungan satuan pendidikan.", size: 16 })]
-                        })
-                      ]
-                    }),
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      shading: { fill: "ECEFF1" },
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          spacing: { before: 200, after: 200 },
-                          children: [new TextRun({ text: "[ TEMPELKAN FOTO DOKUMENTASI KEGIATAN 2 DI SINI ]\n\nKeterangan: Evaluasi bersama peserta didik dan dewan guru.", size: 16 })]
-                        })
-                      ]
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      children: [new TextRun({ text: "Koordinator Program,\n\n\n\n\n( ......................................... )\nNIP. .....................................", size: 17 })]
                     })
                   ]
-                })
-              ]
-            }),
-
-            new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              spacing: { before: 240, after: 140 },
-              children: [
-                new TextRun({ text: `Cirebon, 13 November ${sch.year}`, size: 18 })
-              ]
-            }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: {
-                top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
-                insideHorizontal: { style: BorderStyle.NONE }, insideVertical: { style: BorderStyle.NONE }
-              },
-              rows: [
-                new TableRow({
+                }),
+                new TableCell({
+                  width: { size: 50, type: WidthType.PERCENTAGE },
                   children: [
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          children: [new TextRun({ text: "Koordinator Program,\n\n\n\n\n( ......................................... )\nNIP. .....................................", size: 17 })]
-                        })
-                      ]
-                    }),
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          children: [new TextRun({ text: `Mengetahui,\nKepala ${sch.name},\n\n\n\n${sch.ks}\nNIP. ${sch.ks_nip}`, size: 17 })]
-                        })
-                      ]
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      children: [new TextRun({ text: `Mengetahui,\nKepala ${sch.name},\n\n\n\n${sch.ks}\nNIP. ${sch.ks_nip}`, size: 17 })]
                     })
                   ]
                 })
               ]
             })
           ]
+        })
+      );
+
+      const doc = new Document({
+        sections: [{
+          properties: {
+            page: { margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } }
+          },
+          children: children
         }]
       });
 
       return await docx.Packer.toBlob(doc);
+    }
     }
 
     async function downloadSinglePreset(poinNum) {
@@ -947,16 +974,39 @@ Mengetahui, Kepala Sekolah ${sch.ks}`;
           btnDl.disabled = false;
           statusEl.textContent = "Selesai (Template Standar)";
         } else {
-          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-          });
+          // Model fallback list (gemini-1.5-flash is universal and supported on all keys)
+          const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
+          let generatedText = null;
+          let lastErr = null;
 
-          if (!response.ok) throw new Error(`API Error: ${response.status} ${response.statusText}`);
+          for (const m of modelsToTry) {
+            try {
+              const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+              });
 
-          const data = await response.json();
-          const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "Gagal menghasilkan teks.";
+              if (response.ok) {
+                const data = await response.json();
+                generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (generatedText) break;
+              } else {
+                let errDetail = response.statusText;
+                try {
+                  const errJson = await response.json();
+                  errDetail = errJson.error?.message || errDetail;
+                } catch(e) {}
+                lastErr = new Error(`${response.status}: ${errDetail}`);
+              }
+            } catch (networkErr) {
+              lastErr = networkErr;
+            }
+          }
+
+          if (!generatedText) {
+            throw lastErr || new Error("Gagal memperoleh respon dari Gemini API.");
+          }
           
           previewEl.textContent = generatedText;
           lastGeneratedData = { title: indicatorName, content: generatedText };
@@ -977,7 +1027,7 @@ Mengetahui, Kepala Sekolah ${sch.ks}`;
       if (!lastGeneratedData) return;
       try {
         const sch = getSchoolInfo();
-        const blob = await createDocxBlob(99, { title: lastGeneratedData.title });
+        const blob = await createDocxBlob(99, { title: lastGeneratedData.title, content: lastGeneratedData.content });
         const cleanName = lastGeneratedData.title.replace(/[\/\s:]+/g, '_');
         saveAs(blob, `Bukti_Fisik_Custom_${cleanName}.docx`);
       } catch (err) {
