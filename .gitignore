@@ -5,3 +5,8 @@ __pycache__/
 *.pyc
 .DS_Store
 Thumbs.db
+
+bin/*.exe
+__pycache__/
+*.pyc
+.env

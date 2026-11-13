@@ -176,6 +176,18 @@
     <!-- CONTENT BODY -->
     <div class="p-5 sm:p-8 space-y-8 flex-grow">
 
+      <!-- PYTHON BACKEND STATUS BANNER -->
+      <div id="backend-status-banner" class="hidden p-4 bg-emerald-100 border-[2.5px] border-emerald-600 rounded-2xl shadow-brutal flex items-center justify-between text-emerald-950 font-bold text-sm">
+        <div class="flex items-center space-x-3">
+          <span class="text-2xl">⚡</span>
+          <div>
+            <div class="font-black text-base text-emerald-900">Python Engine Aktif (Opsi 1)</div>
+            <div class="text-xs text-emerald-800 font-medium">Terhubung ke Server Lokal / Cloudflare Tunnel. Dokumen Word diproses secara native dengan garis ganda kop, tabel berwarna 7 kolom, dan lembar pengesahan resmi.</div>
+          </div>
+        </div>
+        <span class="px-3 py-1 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider">Online</span>
+      </div>
+
       <!-- ======================================================== -->
       <!-- PROMINENT HERO: DOKUMEN INSTRUMEN PEMANTAUAN RESMI 27 POIN -->
       <!-- ======================================================== -->
@@ -465,6 +477,23 @@ Belum ada naskah yang di-generate. Silakan isi form di sebelah kiri dan klik "Ge
     // ACCESS PASSCODE CONFIG
     const CORRECT_PASSCODE = "JABAR2026";
     const AUTH_KEY = "AI_AUTODOC_AUTH_TOKEN";
+    let isPythonBackend = false;
+
+    async function checkPythonBackend() {
+      try {
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.status === 'online') {
+            isPythonBackend = true;
+            const banner = document.getElementById('backend-status-banner');
+            if (banner) banner.classList.remove('hidden');
+          }
+        }
+      } catch (e) {
+        isPythonBackend = false;
+      }
+    }
 
     function setAuthStorage(val) {
       try { sessionStorage.setItem(AUTH_KEY, val); } catch (e) {}
@@ -941,6 +970,19 @@ Belum ada naskah yang di-generate. Silakan isi form di sebelah kiri dan klik "Ge
       if (btn) btn.disabled = true;
       try {
         const sch = getSchoolInfo();
+        if (isPythonBackend) {
+          const res = await fetch('/api/generate-main', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sch)
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            const fileName = `Instrumen_Pemantauan_Jabar_Beraksi_27Poin_${sch.name.replace(/\s+/g, '_')}_${sch.year}.docx`;
+            saveAs(blob, fileName);
+            return;
+          }
+        }
         const blob = await createMainInstrumentDocxBlob(sch);
         const fileName = `Instrumen_Pemantauan_Jabar_Beraksi_27Poin_${sch.name.replace(/\s+/g, '_')}_${sch.year}.docx`;
         saveAs(blob, fileName);
@@ -1396,6 +1438,19 @@ Belum ada naskah yang di-generate. Silakan isi form di sebelah kiri dan klik "Ge
     async function downloadSinglePreset(poinNum) {
       try {
         const sch = getSchoolInfo();
+        if (isPythonBackend) {
+          const res = await fetch(`/api/generate-indicator/${poinNum}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sch)
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            const fileName = `Bukti_Fisik_Poin_${poinNum}_${sch.name.replace(/\s+/g, '_')}_${sch.year}.docx`;
+            saveAs(blob, fileName);
+            return;
+          }
+        }
         const blob = await createDocxBlob(poinNum);
         const fileName = `Bukti_Fisik_Poin_${poinNum}_${sch.name.replace(/\s+/g, '_')}_${sch.year}.docx`;
         saveAs(blob, fileName);
@@ -1416,6 +1471,18 @@ Belum ada naskah yang di-generate. Silakan isi form di sebelah kiri dan klik "Ge
 
       try {
         const sch = getSchoolInfo();
+        if (isPythonBackend) {
+          const res = await fetch('/api/download-all-zip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sch)
+          });
+          if (res.ok) {
+            const blob = await res.blob();
+            saveAs(blob, `Paket_Lengkap_Jabar_Beraksi_27Poin_${sch.name.replace(/\s+/g, '_')}.zip`);
+            return;
+          }
+        }
         const zip = new JSZip();
 
         // 1. Add Main Instrument Document
@@ -1446,8 +1513,10 @@ Belum ada naskah yang di-generate. Silakan isi form di sebelah kiri dan klik "Ge
     // ========================================================
     function isStrictTextModel(m) {
       const name = (typeof m === 'string' ? m : (m.name || '')).toLowerCase();
-      // Filter out non-text modalities: TTS, audio, embedding, imagen, aqa, realtime
-      if (name.includes('tts') || name.includes('audio') || name.includes('embedding') || name.includes('imagen') || name.includes('aqa') || name.includes('realtime') || name.includes('whisper')) {
+      // Strictly filter out non-text modalities: TTS, audio, embedding, imagen, aqa, realtime, etc.
+      if (name.includes('tts') || name.includes('audio') || name.includes('preview-tts') ||
+          name.includes('embedding') || name.includes('imagen') || name.includes('aqa') || 
+          name.includes('realtime') || name.includes('whisper') || name.includes('live')) {
         return false;
       }
       if (typeof m === 'object' && m.supportedGenerationMethods) {
@@ -1652,6 +1721,39 @@ SUSUN NASKAH SECARA RESMI DENGAN URUTAN PERSIS SEPERTI INI:
 
       try {
         let generatedText = null;
+
+        // 0. Coba panggil Python backend lokal jika aktif (Opsi 1 - Kualitas Tinggi)
+        if (isPythonBackend) {
+          statusEl.textContent = "Python Server & AI sedang menyusun dokumen resmi Word...";
+          try {
+            const chosenModelUI = document.getElementById('ai_model_select')?.value;
+            const pyRes = await fetch('/api/generate-ai', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                topic: indicatorName,
+                evidenceTypes: evidenceTypes,
+                customPrompt: notes,
+                model: chosenModelUI,
+                apiKey: apiKey || undefined,
+                sch: sch
+              })
+            });
+
+            if (pyRes.ok) {
+              const blob = await pyRes.blob();
+              const cleanTitle = indicatorName.replace(/[\/\s:]+/g, '_').substring(0, 30);
+              saveAs(blob, `Bukti_Fisik_AI_${cleanTitle}.docx`);
+              statusEl.textContent = "✅ Dokumen Bukti Fisik Word berhasil dibuat dan diunduh!";
+              statusEl.className = "text-xs font-bold text-emerald-800";
+              previewEl.textContent = `=== BUKTI FISIK BERHASIL DIGENERATE (PYTHON ENGINE) ===\nTopik: ${indicatorName}\nSekolah: ${sch.name}\n\nBerkas Word (.docx) resmi dengan Kop Bergaris Ganda, Tabel Berwarna 7 Kolom, Dokumentasi Foto, dan Lembar Pengesahan telah selesai diunduh secara otomatis ke komputer/perangkat Anda.`;
+              if (btnDl) btnDl.classList.remove('hidden');
+              return;
+            }
+          } catch (pyErr) {
+            console.warn("Python backend error:", pyErr);
+          }
+        }
 
         // Coba panggil serverless backend Vercel /api/generate terlebih dahulu
         try {
@@ -2139,6 +2241,7 @@ SUSUN NASKAH SECARA RESMI DENGAN URUTAN PERSIS SEPERTI INI:
     // INITIALIZATION
     window.addEventListener('DOMContentLoaded', () => {
       checkAuth();
+      checkPythonBackend();
       renderPresets();
       const savedKey = localStorage.getItem('GEMINI_API_KEY');
       if (savedKey) {
