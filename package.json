@@ -1,0 +1,19 @@
+{
+  "name": "ai-autodoc",
+  "version": "1.0.0",
+  "description": "AI-autoDoc: Generator Dokumen Bukti Fisik & Administrasi Pendidikan Otomatis (.docx)",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "ai",
+    "document-generator",
+    "docx",
+    "jabar-beraksi",
+    "pendidikan-karakter",
+    "administrasi-sekolah"
+  ],
+  "author": "dikkayulianto",
+  "license": "MIT"
+}
