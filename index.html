@@ -1727,6 +1727,32 @@ SUSUN NASKAH SECARA RESMI DENGAN URUTAN PERSIS SEPERTI INI:
           statusEl.textContent = "Python Server & AI sedang menyusun dokumen resmi Word...";
           try {
             const chosenModelUI = document.getElementById('ai_model_select')?.value;
+            const textRes = await fetch('/api/generate-ai-text', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                topic: indicatorName,
+                evidenceTypes: evidenceTypes,
+                customPrompt: notes,
+                model: chosenModelUI,
+                apiKey: apiKey || undefined,
+                sch: sch
+              })
+            });
+
+            if (textRes.ok) {
+              const textData = await textRes.json();
+              if (textData.content) {
+                previewEl.textContent = textData.content;
+                lastGeneratedData = {
+                  text: textData.content,
+                  indicator: indicatorName,
+                  evidenceTypes: evidenceTypes,
+                  notes: notes
+                };
+              }
+            }
+
             const pyRes = await fetch('/api/generate-ai', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1743,10 +1769,11 @@ SUSUN NASKAH SECARA RESMI DENGAN URUTAN PERSIS SEPERTI INI:
             if (pyRes.ok) {
               const blob = await pyRes.blob();
               const cleanTitle = indicatorName.replace(/[\/\s:]+/g, '_').substring(0, 30);
-              saveAs(blob, `Bukti_Fisik_AI_${cleanTitle}.docx`);
-              statusEl.textContent = "✅ Dokumen Bukti Fisik Word berhasil dibuat dan diunduh!";
+              const isModul = /modul|rpp|perangkat|buku|kurikulum|pembelajaran|pai|ipas|matematika/i.test(indicatorName);
+              const docName = isModul ? `Modul_Ajar_${cleanTitle}.docx` : `Bukti_Fisik_${cleanTitle}.docx`;
+              saveAs(blob, docName);
+              statusEl.textContent = `✅ Dokumen ${isModul ? 'Modul Ajar' : 'Bukti Fisik'} Word berhasil disusun dan diunduh!`;
               statusEl.className = "text-xs font-bold text-emerald-800";
-              previewEl.textContent = `=== BUKTI FISIK BERHASIL DIGENERATE (PYTHON ENGINE) ===\nTopik: ${indicatorName}\nSekolah: ${sch.name}\n\nBerkas Word (.docx) resmi dengan Kop Bergaris Ganda, Tabel Berwarna 7 Kolom, Dokumentasi Foto, dan Lembar Pengesahan telah selesai diunduh secara otomatis ke komputer/perangkat Anda.`;
               if (btnDl) btnDl.classList.remove('hidden');
               return;
             }

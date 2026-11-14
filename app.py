@@ -161,15 +161,87 @@ def test_key():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/generate-ai', methods=['POST'])
-def generate_ai():
+@app.route('/api/generate-ai-text', methods=['POST'])
+def generate_ai_text():
     data = request.get_json(silent=True) or {}
     api_key = (data.get('apiKey') or os.environ.get('GEMINI_API_KEY') or '').strip()
-    topic = data.get('topic') or "Implementasi Program Pembiasaan Karakter"
+    topic = (data.get('topic') or "Implementasi Program Pembiasaan Karakter").strip()
     evidence_types = data.get('evidenceTypes') or "Surat Tugas, Laporan Kegiatan, Jurnal Log 7 Kolom, Lembar Foto Dokumentasi, Lembar Pengesahan"
     custom_prompt = data.get('customPrompt') or ""
     chosen_model = data.get('model') or "auto"
     sch = data.get('sch') or {}
+    
+    school_name = sch.get('name') or 'SD NEGERI 1 KESAMBI'
+    head_name = sch.get('head') or sch.get('ks') or 'Drs. H. Mulyono, M.Pd.'
+    supervisor_name = sch.get('supervisor') or 'Ari Haerani, S.Pd.SD, M.Pd'
+    year = str(sch.get('year') or '2026')
+    
+    from engine.smart_content_engine import build_system_prompt, get_smart_fallback, is_modul_ajar_topic
+    
+    is_modul = is_modul_ajar_topic(topic)
+    system_prompt = build_system_prompt(topic, evidence_types, custom_prompt, school_name, head_name, supervisor_name)
+    
+    candidates = []
+    if chosen_model and chosen_model != 'auto' and is_text_model(chosen_model):
+        candidates.append(chosen_model)
+    candidates.extend(['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'])
+    
+    raw_ai_text = None
+    source = "smart_engine"
+    if api_key:
+        headers = {'Content-Type': 'application/json'}
+        payload = {
+            "contents": [{
+                "parts": [{"text": system_prompt}]
+            }]
+        }
+        for m in candidates:
+            for ver in ['v1beta', 'v1']:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/{ver}/models/{m}:generateContent?key={api_key}"
+                    resp = requests.post(url, headers=headers, json=payload, timeout=35)
+                    if resp.ok:
+                        data_res = resp.json()
+                        candidates_list = data_res.get('candidates', [])
+                        if candidates_list:
+                            raw_ai_text = candidates_list[0].get('content', {}).get('parts', [{}])[0].get('text')
+                            if raw_ai_text:
+                                source = f"gemini ({m})"
+                                break
+                except Exception as ex:
+                    print(f"Error calling {m} ({ver}): {ex}")
+            if raw_ai_text:
+                break
+
+    if not raw_ai_text:
+        raw_ai_text = get_smart_fallback(topic, evidence_types, school_name, head_name, supervisor_name, year)
+
+    return jsonify({
+        "success": True,
+        "content": raw_ai_text,
+        "is_modul": is_modul,
+        "source": source
+    })
+
+@app.route('/api/generate-ai', methods=['POST'])
+def generate_ai():
+    data = request.get_json(silent=True) or {}
+    api_key = (data.get('apiKey') or os.environ.get('GEMINI_API_KEY') or '').strip()
+    topic = (data.get('topic') or "Implementasi Program Pembiasaan Karakter").strip()
+    evidence_types = data.get('evidenceTypes') or "Surat Tugas, Laporan Kegiatan, Jurnal Log 7 Kolom, Lembar Foto Dokumentasi, Lembar Pengesahan"
+    custom_prompt = data.get('customPrompt') or ""
+    chosen_model = data.get('model') or "auto"
+    sch = data.get('sch') or {}
+    
+    school_name = sch.get('name') or 'SD NEGERI 1 KESAMBI'
+    head_name = sch.get('head') or sch.get('ks') or 'Drs. H. Mulyono, M.Pd.'
+    supervisor_name = sch.get('supervisor') or 'Ari Haerani, S.Pd.SD, M.Pd'
+    year = str(sch.get('year') or '2026')
+    
+    from engine.smart_content_engine import build_system_prompt, get_smart_fallback, is_modul_ajar_topic
+    
+    is_modul = is_modul_ajar_topic(topic)
+    system_prompt = build_system_prompt(topic, evidence_types, custom_prompt, school_name, head_name, supervisor_name)
     
     # Priority candidate models (strictly text only)
     candidates = []
@@ -177,51 +249,6 @@ def generate_ai():
         candidates.append(chosen_model)
     candidates.extend(['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'])
     
-    school_name = sch.get('name', 'SD NEGERI 1 KESAMBI')
-    head_name = sch.get('head', 'Drs. H. Mulyono, M.Pd.')
-    supervisor_name = sch.get('supervisor', 'Ari Haerani, S.Pd.SD, M.Pd')
-    
-    system_prompt = f"""Anda adalah Auditor Senior Standar Penjaminan Mutu Pendidikan Jawa Barat dan Pengawas Sekolah Kota Cirebon.
-Tugas Anda adalah menyusun naskah kelengkapan BUKTI FISIK resmi untuk:
-Sekolah: {school_name}
-Topik/Indikator: {topic}
-Kepala Sekolah: {head_name}
-Pengawas Pembina: {supervisor_name}
-
-{custom_prompt if custom_prompt else ''}
-
-Format Dokumen WAJIB menggunakan struktur Markdown di bawah ini agar dapat diurai secara otomatis menjadi tabel Word resmi:
-
-BAGIAN 1: IDENTITAS & DASAR HUKUM
-- Dasar Hukum 1: Peraturan Gubernur Jawa Barat No. 12 Tahun 2024 tentang Gerakan 7 Hari Berkarakter
-- Dasar Hukum 2: Permendikbudristek No. 46 Tahun 2023 tentang Pencegahan dan Penanganan Kekerasan di Satuan Pendidikan
-- Nomor Surat Tugas: 421.2 / 084 / SD-01 / DISDIK / 2026
-- Sasaran Kegiatan: Seluruh Peserta Didik Kelas I s/d VI {school_name}
-
-BAGIAN 2: LAPORAN PELAKSANAAN KEGIATAN
-- Latar Belakang: Uraikan latar belakang pelaksanaan secara komprehensif dan formal.
-- Tujuan Kegiatan: Uraikan minimal 3 tujuan terukur.
-- Mekanisme Pelaksanaan: Uraikan alur pembiasaan rutin terstruktur.
-- Capaian Kinerja: Tingkat keterlaksanaan mencapai 98% terverifikasi aktif.
-
-BAGIAN 3: JURNAL LOG HARIAN 7 KOLOM
-| No | Hari / Tanggal | Waktu (WIB) | Bentuk Kegiatan / Pembiasaan | Sasaran Peserta | Hasil & Capaian Kinerja | Keterangan Verifikasi |
-| 1 | Senin, 09 Februari 2026 | 06.45 - 07.15 | Pembiasaan pagi & Apel Ceria | 342 Siswa & Seluruh Pendidik | Kehadiran 98.5%, disiplin tertib | Terverifikasi Guru Piket |
-| 2 | Selasa, 10 Februari 2026 | 07.00 - 07.30 | Praktik Ibadah & Literasi Karakter | Kelas IV, V, VI | Pembiasaan shalat dhuha & literasi | Terverifikasi Guru PAI |
-| 3 | Rabu, 11 Februari 2026 | 07.15 - 08.00 | Senam Kebugaran Bersama | Seluruh Siswa & Guru | Meningkatkan daya tahan jasmani | Terverifikasi Guru PJOK |
-| 4 | Kamis, 12 Februari 2026 | 09.30 - 10.00 | Makan Sehat Bergizi (Isi Piringku) | Siswa Kelas I - VI | Pola makan bergizi seimbang | Terverifikasi Tim UKS |
-| 5 | Jumat, 13 Februari 2026 | 07.30 - 08.30 | Bakti Sosial & Lingkungan Bersih | Warga Sekolah & Lingkungan | Budaya gotong royong terwujud | Terverifikasi Tim Adiwiyata |
-
-BAGIAN 4: MATRIKS EVALUASI & TINDAK LANJUT
-| Aspek Evaluasi | Temuan di Lapangan | Analisis Ketercapaian | Tindak Lanjut Perbaikan | Penanggung Jawab |
-| Kedisiplinan Waktu | 98.5% siswa hadir tepat waktu | Target tercapai dengan sangat baik | Pertahankan dan beri apresiasi berkala | Tim Ketertiban |
-| Keterlibatan Guru | 100% guru aktif mendampingi | Selaras dengan tugas pembiasaan | Jadwalkan evaluasi bulanan terstruktur | Kepala Sekolah |
-
-BAGIAN 5: KESIMPULAN & REKOMENDASI PENGAWAS
-- Kesimpulan: Program terlaksana dengan amat baik, terstruktur, dan berdampak nyata bagi penguatan karakter murid.
-- Catatan Pengawas: Disetujui dan disahkan sebagai bukti fisik sah instrumen monitoring Jabar Beraksi Kota Cirebon.
-"""
-
     raw_ai_text = None
     if api_key:
         headers = {'Content-Type': 'application/json'}
@@ -235,7 +262,7 @@ BAGIAN 5: KESIMPULAN & REKOMENDASI PENGAWAS
             for ver in ['v1beta', 'v1']:
                 try:
                     url = f"https://generativelanguage.googleapis.com/{ver}/models/{m}:generateContent?key={api_key}"
-                    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+                    resp = requests.post(url, headers=headers, json=payload, timeout=35)
                     if resp.ok:
                         data_res = resp.json()
                         candidates_list = data_res.get('candidates', [])
@@ -248,41 +275,20 @@ BAGIAN 5: KESIMPULAN & REKOMENDASI PENGAWAS
             if raw_ai_text:
                 break
 
-    # If API call failed or no API key, use the built-in comprehensive template
+    # If API call failed or no API key, use the intelligent contextual generator
     if not raw_ai_text:
-        raw_ai_text = f"""BAGIAN 1: IDENTITAS & DASAR HUKUM
-- Dasar Hukum 1: Peraturan Gubernur Jawa Barat No. 12 Tahun 2024 tentang Gerakan 7 Hari Berkarakter
-- Dasar Hukum 2: Permendikbudristek No. 46 Tahun 2023 tentang Pencegahan dan Penanganan Kekerasan di Satuan Pendidikan
-- Nomor Surat Tugas: 421.2 / 084 / SD-01 / DISDIK / 2026
-- Sasaran Kegiatan: Seluruh Peserta Didik Kelas I s/d VI {school_name}
-
-BAGIAN 2: LAPORAN PELAKSANAAN KEGIATAN
-- Latar Belakang: Dalam rangka mewujudkan pembentukan profil pelajar Pancasila yang utuh dan selaras dengan program Jabar Beraksi, {school_name} menyelenggarakan pembiasaan berkesinambungan.
-- Tujuan Kegiatan: 1. Membiasakan perilaku positif setiap hari; 2. Membangun kedisiplinan dan rasa tanggung jawab sosial; 3. Menghadirkan lingkungan sekolah yang aman, nyaman, dan inklusif.
-- Mekanisme Pelaksanaan: Pembiasaan dilaksanakan terjadwal setiap pagi sebelum pembelajaran dan terintegrasi pada kegiatan intrakurikuler dan kokurikuler.
-- Capaian Kinerja: Tingkat keterlaksanaan mencapai 98% terverifikasi aktif dengan partisipasi seluruh peserta didik dan pendidik.
-
-BAGIAN 3: JURNAL LOG HARIAN 7 KOLOM
-| No | Hari / Tanggal | Waktu (WIB) | Bentuk Kegiatan / Pembiasaan | Sasaran Peserta | Hasil & Capaian Kinerja | Keterangan Verifikasi |
-| 1 | Senin, 09 Februari 2026 | 06.45 - 07.15 | Pembiasaan Pagi & Apel Ceria | 342 Siswa & Seluruh Guru | Kehadiran 98.5%, disiplin tertib | Terverifikasi Guru Piket |
-| 2 | Selasa, 10 Februari 2026 | 07.00 - 07.30 | Praktik Ibadah & Literasi Karakter | Kelas IV, V, VI | Shalat dhuha & literasi bermakna | Terverifikasi Guru PAI |
-| 3 | Rabu, 11 Februari 2026 | 07.15 - 08.00 | Senam Jasmani & Kebugaran | Seluruh Siswa & Guru | Daya tahan fisik bugar & semangat | Terverifikasi Guru PJOK |
-| 4 | Kamis, 12 Februari 2026 | 09.30 - 10.00 | Makan Sehat Bergizi (Isi Piringku) | Seluruh Siswa | Pola makan sehat seimbang | Terverifikasi Tim UKS |
-| 5 | Jumat, 13 Februari 2026 | 07.30 - 08.30 | Bakti Sosial & Lingkungan Asri | Warga Sekolah | Gotong royong dan peduli sosial | Terverifikasi Tim Adiwiyata |
-
-BAGIAN 4: MATRIKS EVALUASI & TINDAK LANJUT
-| Aspek Evaluasi | Temuan di Lapangan | Analisis Ketercapaian | Tindak Lanjut Perbaikan | Penanggung Jawab |
-| Kedisiplinan Waktu | 98.5% siswa hadir tepat waktu | Sangat Memuaskan | Pertahankan dan berikan penghargaan berkala | Tim Ketertiban |
-| Keterlibatan Guru | 100% guru aktif mendampingi | Sesuai SOP Pelaksanaan | Pertahankan pendampingan prima | Kepala Sekolah |
-
-BAGIAN 5: KESIMPULAN & REKOMENDASI PENGAWAS
-- Kesimpulan: Pelaksanaan program telah berjalan optimal, berdampak positif dan memenuhi seluruh kriteria indikator instrumen Jawa Barat Beraksi.
-- Catatan Pengawas: Disetujui dan disahkan secara resmi untuk kelengkapan administrasi penjaminan mutu pendidikan.
-"""
+        raw_ai_text = get_smart_fallback(topic, evidence_types, school_name, head_name, supervisor_name, year)
 
     bio = dg.generate_custom_ai_docx(topic, evidence_types, raw_ai_text, sch)
     clean_topic = re.sub(r'[^a-zA-Z0-9_]', '_', topic)[:30]
-    filename = f"Bukti_Fisik_AI_{clean_topic}.docx"
+    prefix = "Modul_Ajar" if is_modul else "Bukti_Fisik"
+    filename = f"{prefix}_{clean_topic}.docx"
+    return send_file(
+        bio,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
     return send_file(
         bio,
         as_attachment=True,

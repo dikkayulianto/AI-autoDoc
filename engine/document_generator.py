@@ -352,9 +352,14 @@ def generate_main_instrument_docx(sch=None):
 
 def generate_indicator_docx(poin_num, sch=None):
     sch = {**DEFAULT_SCHOOL, **(sch or {})}
-    # Match metadata
+    from engine.indicator_data import INDICATOR_DETAILS_MAP
+
+    details = INDICATOR_DETAILS_MAP.get(poin_num, {})
     matched = next((item for item in INDICATORS_27 if item[0] == poin_num), (poin_num, f"Indikator Poin {poin_num}", ["SOP", "Log", "Laporan"], "95%"))
-    num, title, ev_list, pct = matched
+    num, default_title, default_ev, pct = matched
+    
+    title = details.get('sub', default_title)
+    ev_desc = details.get('ev', ', '.join(default_ev))
 
     doc = docx.Document()
     for section in doc.sections:
@@ -395,7 +400,7 @@ def generate_indicator_docx(poin_num, sch=None):
     p_s = doc.add_paragraph()
     p_s.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_s.paragraph_format.space_after = Pt(14)
-    rs = p_s.add_run(f"INDIKATOR: {title.upper()}\n(Bukti Fisik Terverifikasi: {', '.join(ev_list)})")
+    rs = p_s.add_run(f"INDIKATOR: {title.upper()}\n(Bukti Fisik Terverifikasi: {ev_desc})")
     rs.bold = True
     rs.font.size = Pt(9.5)
     rs.font.color.rgb = RGBColor(13, 71, 161)
@@ -404,7 +409,8 @@ def generate_indicator_docx(poin_num, sch=None):
     h1 = doc.add_paragraph()
     h1.paragraph_format.space_before = Pt(8)
     h1.paragraph_format.space_after = Pt(4)
-    rh1 = h1.add_run("A. SURAT TUGAS PELAKSANAAN PEMBIASAAN / STANDAR OPERASIONAL PROSEDUR")
+    st_title_text = details.get('st_title', "A. SURAT TUGAS PELAKSANAAN PEMBIASAAN / STANDAR OPERASIONAL PROSEDUR")
+    rh1 = h1.add_run(st_title_text)
     rh1.bold = True
     rh1.font.size = Pt(10.5)
     rh1.font.color.rgb = RGBColor(13, 71, 161)
@@ -413,13 +419,19 @@ def generate_indicator_docx(poin_num, sch=None):
     st_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(st_table)
 
+    st_task_text = details.get('st_task', f"1. Mengorganisasikan pembiasaan {title} secara konsisten dan terukur.\n2. Melakukan pendampingan afektif dan pencatatan harian di buku log.\n3. Melakukan evaluasi mingguan dan memberikan apresiasi bagi siswa berkarakter teladan.")
+    role_lead = details.get('role_lead', 'Pembina Kesiswaan & Koordinator Program')
+
+    head_name = sch.get('head') or sch.get('ks') or 'Drs. H. Mulyono, M.Pd.'
+    head_nip = sch.get('nip') or sch.get('ks_nip') or '196805141992031004'
+
     st_data = [
         ("1. Nomor Regulasi / Surat Tugas", f"Nomor: 421.2 / 0{num + 70} / SD-KS / X / {sch.get('year', '2026')}"),
-        ("2. Dasar Pelaksanaan", f"a. Panduan Penguatan Pendidikan Karakter (PPK) Jabar Beraksi Kota Cirebon {sch.get('year', '2026')}.\nb. Rencana Kerja Tahunan (RKT) {sch.get('name', 'SD NEGERI 1 KESAMBI')}."),
-        ("3. Pejabat Penanggung Jawab", f"Nama : {sch.get('ks', 'Dra. Hj. Siti Maryam, M.Pd')}\nJabatan : Kepala Sekolah\nNIP : {sch.get('ks_nip', '197505121998032004')}"),
-        ("4. Personel yang Ditugaskan", f"1. Pembina Kesiswaan & Koordinator Karakter\n2. Seluruh Guru Kelas (I s.d. VI) dan Guru Mata Pelajaran\n3. Pengurus Komite / Paguyuban Orang Tua\n4. Seluruh Siswa {sch.get('name', 'SD NEGERI 1 KESAMBI')}"),
-        ("5. Uraian Prosedur & Tugas", f"1. Mengorganisasikan pembiasaan {title} secara konsisten dan terukur.\n2. Melakukan pendampingan afektif dan pencatatan harian di buku log.\n3. Melakukan evaluasi mingguan dan memberikan apresiasi bagi siswa berkarakter teladan."),
-        ("6. Waktu & Lokasi", f"Waktu : Terjadwal Rutin Setiap Hari / Pekanan Semester Ganjil\nLokasi : Lingkungan {sch.get('name', 'SD NEGERI 1 KESAMBI')} dan Lingkungan Keluarga")
+        ("2. Dasar Pelaksanaan", f"a. Panduan Penguatan Pendidikan Karakter (PPK) Jabar Beraksi Kota Cirebon {sch.get('year', '2026')}.\nb. Rencana Kerja Tahunan (RKT) {sch.get('name', 'SD NEGERI 1 KESAMBI')} Bidang Kesiswaan."),
+        ("3. Pejabat Penanggung Jawab", f"Nama : {head_name}\nJabatan : Kepala Sekolah\nNIP : {head_nip}"),
+        ("4. Personel yang Ditugaskan", f"1. {role_lead}\n2. Seluruh Guru Kelas (I s.d. VI) dan Guru Mata Pelajaran\n3. Pengurus Komite / Paguyuban Orang Tua Murid\n4. Seluruh Peserta Didik {sch.get('name', 'SD NEGERI 1 KESAMBI')}"),
+        ("5. Uraian Prosedur & Tugas", st_task_text),
+        ("6. Waktu & Lokasi", f"Waktu : Terjadwal Rutin Semester Ganjil Tahun Ajaran {sch.get('year', '2026')}/2027\nLokasi : Lingkungan {sch.get('name', 'SD NEGERI 1 KESAMBI')} dan Lingkungan Keluarga")
     ]
 
     col_widths = [Inches(2.0), Inches(4.8)]
@@ -452,13 +464,20 @@ def generate_indicator_docx(poin_num, sch=None):
     rep_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(rep_table)
 
+    rep_title_text = details.get('rep_title', f"Program Pembiasaan Karakter Unggul: {title}")
+    rep_bg_text = details.get('rep_bg', f"Menjamin keterlaksanaan pembiasaan {title} secara tertib, aman, terukur, dan berdampak positif bagi pembentukan budi pekerti luhur peserta didik.")
+    rep_scope_text = details.get('rep_scope', "a. Sosialisasi awal tahun kepada seluruh warga sekolah.\nb. Pelaksanaan terintegrasi dalam budaya sekolah harian.\nc. Pendampingan berkala wali kelas dan pencatatan buku jurnal.")
+    rep_impact_text = details.get('rep_impact', f"Tingkat partisipasi aktif peserta didik mencapai {pct}, menunjukkan peningkatan kedisiplinan dan respon positif.")
+    rep_obstacle_text = details.get('rep_obstacle', "Perbedaan latar belakang kebiasaan di rumah yang membutuhkan komunikasi intensif secara berkala.")
+    rep_followup_text = details.get('rep_followup', "Mengembangkan lembar refleksi mandiri siswa serta penguatan kolaborasi melalui buku penghubung dan pertemuan paguyuban.")
+
     rep_data = [
-        ("1. Nama Program", f"Program Pembiasaan Karakter Unggul: {title}"),
-        ("2. Latar Belakang & Tujuan", f"Menjamin keterlaksanaan pembiasaan {title} secara tertib, aman, terukur, dan berdampak positif bagi pembentukan budi pekerti luhur peserta didik."),
-        ("3. Ruang Lingkup Aktivitas", "a. Sosialisasi awal tahun kepada seluruh warga sekolah dan paguyuban orang tua.\nb. Pelaksanaan terintegrasi dalam budaya sekolah harian.\nc. Pendampingan berkala wali kelas dan pencatatan buku jurnal."),
-        ("4. Capaian & Keterlaksanaan", f"Tingkat partisipasi aktif peserta didik mencapai {pct}, menunjukkan peningkatan kedisiplinan dan respon positif dari seluruh dewan guru."),
-        ("5. Kendala Lapangan", "Perbedaan latar belakang kebiasaan di rumah yang membutuhkan komunikasi intensif secara berkala dengan orang tua murid."),
-        ("6. Rencana Tindak Lanjut", "Mengembangkan lembar refleksi mandiri siswa serta penguatan kolaborasi melalui buku penghubung dan pertemuan paguyuban kelas.")
+        ("1. Nama Program", rep_title_text),
+        ("2. Latar Belakang & Tujuan", rep_bg_text),
+        ("3. Ruang Lingkup Aktivitas", rep_scope_text),
+        ("4. Capaian & Keterlaksanaan", rep_impact_text),
+        ("5. Kendala Lapangan", rep_obstacle_text),
+        ("6. Rencana Tindak Lanjut", rep_followup_text)
     ]
 
     for r_idx, (c0_text, c1_text) in enumerate(rep_data):
@@ -486,13 +505,24 @@ def generate_indicator_docx(poin_num, sch=None):
     rh3.font.size = Pt(10.5)
     rh3.font.color.rgb = RGBColor(13, 71, 161)
 
-    log_table = doc.add_table(rows=4, cols=6)
+    log_headers = details.get('log_headers', ['No', 'Hari/Tanggal', 'Aktivitas Pembiasaan', 'Lokasi / Sasaran', 'Catatan Hasil Pengamatan', 'Status'])
+    sample_logs = details.get('logs', [
+        ('1', f"Senin, 14/09/{sch.get('year', '2026')}", f"Pelaksanaan pembiasaan {title} terprogram", "Lingkungan Sekolah / Kelas", "Peserta didik antusias, tertib, dan mematuhi panduan guru.", "Terlaksana\n(100%)"),
+        ('2', f"Rabu, 07/10/{sch.get('year', '2026')}", f"Monitoring berkala dan pengisian jurnal refleksi", "Wali Kelas & Peserta Didik", f"{pct} siswa konsisten mempraktikkan kebiasaan positif secara mandiri.", "Terlaksana\n(98%)"),
+        ('3', f"Jumat, 23/10/{sch.get('year', '2026')}", f"Evaluasi bulanan dan pemberian apresiasi karakter", "Dewan Guru & Murid", "Terjadi peningkatan kedisiplinan dan kebiasaan positif yang konsisten.", "Terlaksana\n(100%)")
+    ])
+
+    log_col_w_nums = details.get('log_col_w')
+    if not log_col_w_nums or len(log_col_w_nums) != len(log_headers):
+        log_col_w_nums = [6.8 / len(log_headers)] * len(log_headers)
+
+    log_table = doc.add_table(rows=len(sample_logs) + 1, cols=len(log_headers))
     log_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(log_table)
 
-    log_headers = ['No', 'Hari/Tanggal', 'Aktivitas Pembiasaan', 'Lokasi / Sasaran', 'Catatan Hasil Pengamatan', 'Status']
     for idx, text in enumerate(log_headers):
         cell = log_table.rows[0].cells[idx]
+        cell.width = Inches(log_col_w_nums[idx])
         set_cell_background(cell, '1565C0')
         set_cell_margins(cell, 90, 90, 70, 70)
         p = cell.paragraphs[0]
@@ -502,23 +532,18 @@ def generate_indicator_docx(poin_num, sch=None):
         r.font.size = Pt(8)
         r.font.color.rgb = RGBColor(255, 255, 255)
 
-    sample_logs = [
-        ('1', f"Senin, 14/09/{sch.get('year', '2026')}", f"Pelaksanaan pembiasaan {title} terprogram", "Lingkungan Sekolah / Kelas", "Peserta didik antusias, tertib, dan mematuhi panduan guru.", "Terlaksana\n(100%)"),
-        ('2', f"Rabu, 07/10/{sch.get('year', '2026')}", f"Monitoring berkala dan pengisian jurnal refleksi", "Wali Kelas & Peserta Didik", f"{pct} siswa konsisten mempraktikkan kebiasaan positif secara mandiri.", "Terlaksana\n(98%)"),
-        ('3', f"Jumat, 23/10/{sch.get('year', '2026')}", f"Evaluasi bulanan dan pemberian apresiasi karakter", "Dewan Guru & Murid", "Terjadi peningkatan kedisiplinan dan kebiasaan positif yang konsisten.", "Terlaksana\n(100%)")
-    ]
-
-    col_w = [Inches(0.4), Inches(1.1), Inches(2.0), Inches(1.3), Inches(1.4), Inches(0.6)]
     for r_idx, data_row in enumerate(sample_logs):
         row = log_table.rows[r_idx + 1]
         bg_col = 'FFFFFF' if r_idx % 2 == 0 else 'F8FAFC'
         for c_idx, val in enumerate(data_row):
+            if c_idx >= len(log_headers):
+                break
             cell = row.cells[c_idx]
-            cell.width = col_w[c_idx]
+            cell.width = Inches(log_col_w_nums[c_idx])
             set_cell_background(cell, bg_col)
             set_cell_margins(cell, 80, 80, 70, 70)
             p = cell.paragraphs[0]
-            if c_idx in [0, 1, 5]:
+            if c_idx in [0, 1, len(log_headers) - 1]:
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.add_run(val).font.size = Pt(8)
 
@@ -537,6 +562,11 @@ def generate_indicator_docx(poin_num, sch=None):
     photo_table.alignment = WD_TABLE_ALIGNMENT.CENTER
     set_table_borders(photo_table)
 
+    photo_labels = details.get('photo_labels', (
+        f"[ TEMPELKAN FOTO DOKUMENTASI 1 ]\n\nPelaksanaan kegiatan {title} bersama peserta didik di sekolah.",
+        f"[ TEMPELKAN FOTO DOKUMENTASI 2 ]\n\nMonitoring dan evaluasi bersama dewan guru dan paguyuban orang tua murid."
+    ))
+
     c0, c1 = photo_table.rows[0].cells[0], photo_table.rows[0].cells[1]
     c0.width, c1.width = Inches(3.4), Inches(3.4)
     set_cell_background(c0, 'FAFAFA')
@@ -544,11 +574,11 @@ def generate_indicator_docx(poin_num, sch=None):
     set_cell_margins(c0, 120, 120, 120, 120)
     set_cell_margins(c1, 120, 120, 120, 120)
     c0.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c0.paragraphs[0].add_run(f"[ TEMPELKAN FOTO DOKUMENTASI 1 ]\n\nPelaksanaan pembiasaan {title} bersama peserta didik di lingkungan sekolah.").font.size = Pt(8)
+    c0.paragraphs[0].add_run(photo_labels[0]).font.size = Pt(8)
     c1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c1.paragraphs[0].add_run(f"[ TEMPELKAN FOTO DOKUMENTASI 2 ]\n\nEvaluasi bersama dewan guru dan paguyuban orang tua murid.").font.size = Pt(8)
+    c1.paragraphs[0].add_run(photo_labels[1]).font.size = Pt(8)
 
-    # TANDA TANGAN
+    # TANDA TANGAN RESMI
     doc.add_paragraph().paragraph_format.space_after = Pt(14)
     p_dt = doc.add_paragraph()
     p_dt.alignment = WD_ALIGN_PARAGRAPH.RIGHT
@@ -563,15 +593,15 @@ def generate_indicator_docx(poin_num, sch=None):
             tcPr.append(parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>'))
 
     c0, c1, c2 = sig_table.rows[0].cells[0], sig_table.rows[0].cells[1], sig_table.rows[0].cells[2]
-    c0.width, c1.width, c2.width = Inches(2.2), Inches(2.2), Inches(2.4)
+    c0.width, c1.width, c2.width = Inches(2.2), Inches(2.4), Inches(2.2)
     c0.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c0.paragraphs[0].add_run("Pembina Kesiswaan,\n\n\n\n\n( ......................................... )\nNIP. .....................................").font.size = Pt(8.5)
+    c0.paragraphs[0].add_run(f"{role_lead},\n\n\n\n\n( ......................................... )\nNIP. .....................................").font.size = Pt(8.5)
 
     c1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c1.paragraphs[0].add_run("Ketua Komite Sekolah,\n\n\n\n\n( ......................................... )\n").font.size = Pt(8.5)
+    c1.paragraphs[0].add_run(f"Pengawas Pembina,\n{sch.get('supervisor_region', 'Wilayah Kerja Harjamukti & Kesambi')}\n\n\n\n{sch.get('supervisor', 'Ari Haerani, S.Pd.SD, M.Pd')}\nNIP. {sch.get('supervisor_nip', '197301211996032001')}").font.size = Pt(8.5)
 
     c2.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c2.paragraphs[0].add_run(f"Mengetahui,\nKepala {sch.get('name', 'SD NEGERI 1 KESAMBI')},\n\n\n\n\n{sch.get('ks', 'Dra. Hj. Siti Maryam, M.Pd')}\nNIP. {sch.get('ks_nip', '197505121998032004')}").font.size = Pt(8.5)
+    c2.paragraphs[0].add_run(f"Mengetahui,\nKepala {sch.get('name', 'SD NEGERI 1 KESAMBI')},\n\n\n\n{head_name}\nNIP. {head_nip}").font.size = Pt(8.5)
 
     bio = io.BytesIO()
     doc.save(bio)
@@ -586,6 +616,11 @@ def generate_custom_ai_docx(title, evidence_types, raw_ai_text, sch=None):
         section.bottom_margin = Inches(0.8)
         section.left_margin = Inches(0.8)
         section.right_margin = Inches(0.8)
+
+    is_modul_ajar = any(k in title.lower() for k in [
+        'modul', 'rpp', 'perangkat', 'buku', 'kurikulum', 'pembelajaran', 'bab', 
+        'pai', 'pendidikan agama', 'ipas', 'matematika', 'bahasa', 'pjok', 'seni'
+    ])
 
     # KOP SURAT
     p_kop = doc.add_paragraph()
@@ -612,17 +647,24 @@ def generate_custom_ai_docx(title, evidence_types, raw_ai_text, sch=None):
     p_t = doc.add_paragraph()
     p_t.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_t.paragraph_format.space_after = Pt(2)
-    rt = p_t.add_run("BUKTI FISIK INSTRUMEN JABAR BERAKSI")
+    if is_modul_ajar:
+        rt = p_t.add_run("PERANGKAT PEMBELAJARAN / MODUL AJAR KURIKULUM MERDEKA")
+    else:
+        rt = p_t.add_run("BERKAS BUKTI FISIK PEMANTAUAN PENDIDIKAN")
     rt.bold = True
     rt.font.size = Pt(12)
 
     p_s = doc.add_paragraph()
     p_s.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_s.paragraph_format.space_after = Pt(14)
-    rs = p_s.add_run(f"INDIKATOR: {title.upper()}\n(Bukti Fisik: {evidence_types or 'Surat Tugas, Laporan, Jurnal Log, Dokumentasi'})")
+    if is_modul_ajar:
+        rs = p_s.add_run(f"MATA PELAJARAN / TOPIK: {title.upper()}\n(Pendekatan Deep Learning & Penguatan Profil Pelajar Pancasila)")
+        rs.font.color.rgb = RGBColor(46, 125, 50) # Emerald
+    else:
+        rs = p_s.add_run(f"PROGRAM / INDIKATOR: {title.upper()}\n(Bukti Fisik: {evidence_types or 'Surat Tugas, Laporan Kegiatan, Jurnal Log, Dokumentasi'})")
+        rs.font.color.rgb = RGBColor(13, 71, 161) # Deep Blue
     rs.bold = True
     rs.font.size = Pt(9.5)
-    rs.font.color.rgb = RGBColor(13, 71, 161)
 
     # Parse AI sections into tables and structured blocks
     lines = raw_ai_text.split('\n')
@@ -641,17 +683,20 @@ def generate_custom_ai_docx(title, evidence_types, raw_ai_text, sch=None):
         rh = h.add_run(current_section)
         rh.bold = True
         rh.font.size = Pt(10.5)
-        rh.font.color.rgb = RGBColor(13, 71, 161)
+        rh.font.color.rgb = RGBColor(46, 125, 50) if is_modul_ajar else RGBColor(13, 71, 161)
 
         if table_rows:
-            tbl = doc.add_table(rows=len(table_rows), cols=len(table_rows[0]))
+            num_cols = len(table_rows[0])
+            tbl = doc.add_table(rows=len(table_rows), cols=num_cols)
             tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
             set_table_borders(tbl)
             for r_idx, r_cells in enumerate(table_rows):
                 row = tbl.rows[r_idx]
                 is_header = (r_idx == 0)
-                bg = '1565C0' if is_header else ('F8FAFC' if r_idx % 2 == 0 else 'FFFFFF')
+                bg = ('2E7D32' if is_modul_ajar else '1565C0') if is_header else ('F8FAFC' if r_idx % 2 == 0 else 'FFFFFF')
                 for c_idx, val in enumerate(r_cells):
+                    if c_idx >= num_cols:
+                        break
                     cell = row.cells[c_idx]
                     set_cell_background(cell, bg)
                     set_cell_margins(cell, 80, 80, 70, 70)
@@ -686,14 +731,29 @@ def generate_custom_ai_docx(title, evidence_types, raw_ai_text, sch=None):
             section_items = []
             doc.add_paragraph().paragraph_format.space_after = Pt(8)
 
+    def is_header_line(t):
+        if not t:
+            return False
+        if t.startswith('#'):
+            return True
+        if t.startswith('BAGIAN') or t.startswith('BAB') or t.startswith('KOMPONEN'):
+            return True
+        if (t.startswith('**') and t.endswith('**') and len(t) < 80) or t.startswith('**BAGIAN') or t.startswith('**BAB'):
+            return True
+        if re.match(r'^[A-Z]\.\s+[A-Z\s]{3,}', t):
+            return True
+        if re.match(r'^[0-9]+\.\s+[A-Z\s]{3,}', t):
+            return True
+        return False
+
     for line in lines:
         t = line.strip()
         if not t:
             continue
 
-        if t.startswith('BAGIAN') or t.startswith('### BAGIAN') or (t.startswith('**BAGIAN') and ':' in t):
+        if is_header_line(t):
             flush_section()
-            current_section = t.replace('*', '').replace('#', '').strip()
+            current_section = re.sub(r'^[#*]+', '', t).replace('*', '').strip()
             continue
 
         if t.startswith('|') and t.endswith('|'):
@@ -714,29 +774,31 @@ def generate_custom_ai_docx(title, evidence_types, raw_ai_text, sch=None):
 
     flush_section()
 
-    # DOKUMENTASI FOTO
-    h4 = doc.add_paragraph()
-    h4.paragraph_format.space_before = Pt(8)
-    h4.paragraph_format.space_after = Pt(4)
-    h4.add_run("LEMBAR DOKUMENTASI FOTO BUKTI FISIK").bold = True
-    h4.runs[0].font.size = Pt(10.5)
-    h4.runs[0].font.color.rgb = RGBColor(13, 71, 161)
+    # DOKUMENTASI FOTO (Hanya jika bukti fisik atau jika ada kata foto)
+    has_photo_req = not is_modul_ajar or ('foto' in raw_ai_text.lower() or 'dokumentasi' in raw_ai_text.lower())
+    if has_photo_req:
+        h4 = doc.add_paragraph()
+        h4.paragraph_format.space_before = Pt(8)
+        h4.paragraph_format.space_after = Pt(4)
+        h4.add_run("LEMBAR DOKUMENTASI FOTO").bold = True
+        h4.runs[0].font.size = Pt(10.5)
+        h4.runs[0].font.color.rgb = RGBColor(13, 71, 161)
 
-    photo_table = doc.add_table(rows=1, cols=2)
-    photo_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    set_table_borders(photo_table)
-    c0, c1 = photo_table.rows[0].cells[0], photo_table.rows[0].cells[1]
-    c0.width, c1.width = Inches(3.4), Inches(3.4)
-    set_cell_background(c0, 'FAFAFA')
-    set_cell_background(c1, 'FAFAFA')
-    set_cell_margins(c0, 120, 120, 120, 120)
-    set_cell_margins(c1, 120, 120, 120, 120)
-    c0.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c0.paragraphs[0].add_run("[ TEMPELKAN FOTO DOKUMENTASI 1 ]\n\nPelaksanaan kegiatan pembiasaan terprogram di sekolah.").font.size = Pt(8)
-    c1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c1.paragraphs[0].add_run("[ TEMPELKAN FOTO DOKUMENTASI 2 ]\n\nEvaluasi bersama dewan guru dan paguyuban orang tua murid.").font.size = Pt(8)
+        photo_table = doc.add_table(rows=1, cols=2)
+        photo_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+        set_table_borders(photo_table)
+        c0, c1 = photo_table.rows[0].cells[0], photo_table.rows[0].cells[1]
+        c0.width, c1.width = Inches(3.4), Inches(3.4)
+        set_cell_background(c0, 'FAFAFA')
+        set_cell_background(c1, 'FAFAFA')
+        set_cell_margins(c0, 120, 120, 120, 120)
+        set_cell_margins(c1, 120, 120, 120, 120)
+        c0.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        c0.paragraphs[0].add_run(f"[ TEMPELKAN FOTO DOKUMENTASI 1 ]\n\nPelaksanaan aktivitas {title} di kelas/sekolah.").font.size = Pt(8)
+        c1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+        c1.paragraphs[0].add_run(f"[ TEMPELKAN FOTO DOKUMENTASI 2 ]\n\nEvaluasi dan unjuk kerja hasil belajar peserta didik.").font.size = Pt(8)
 
-    # TANDA TANGAN
+    # TANDA TANGAN RESMI
     doc.add_paragraph().paragraph_format.space_after = Pt(14)
     p_dt = doc.add_paragraph()
     p_dt.alignment = WD_ALIGN_PARAGRAPH.RIGHT
@@ -750,16 +812,21 @@ def generate_custom_ai_docx(title, evidence_types, raw_ai_text, sch=None):
             tcPr = c._tc.get_or_add_tcPr()
             tcPr.append(parse_xml(f'<w:tcBorders {nsdecls("w")}><w:top w:val="none"/><w:left w:val="none"/><w:bottom w:val="none"/><w:right w:val="none"/></w:tcBorders>'))
 
+    head_name = sch.get('head') or sch.get('ks') or 'Drs. H. Mulyono, M.Pd.'
+    head_nip = sch.get('nip') or sch.get('ks_nip') or '196805141992031004'
+
     c0, c1, c2 = sig_table.rows[0].cells[0], sig_table.rows[0].cells[1], sig_table.rows[0].cells[2]
-    c0.width, c1.width, c2.width = Inches(2.2), Inches(2.2), Inches(2.4)
+    c0.width, c1.width, c2.width = Inches(2.2), Inches(2.4), Inches(2.2)
+    
+    role_c0 = "Guru Pengampu / Wali Kelas" if is_modul_ajar else "Pembina Program / Kesiswaan"
     c0.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c0.paragraphs[0].add_run("Pembina Kesiswaan,\n\n\n\n\n( ......................................... )\nNIP. .....................................").font.size = Pt(8.5)
+    c0.paragraphs[0].add_run(f"{role_c0},\n\n\n\n\n( ......................................... )\nNIP. .....................................").font.size = Pt(8.5)
 
     c1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c1.paragraphs[0].add_run("Ketua Komite Sekolah,\n\n\n\n\n( ......................................... )\n").font.size = Pt(8.5)
+    c1.paragraphs[0].add_run(f"Pengawas Pembina,\n{sch.get('supervisor_region', 'Wilayah Kerja Harjamukti & Kesambi')}\n\n\n\n{sch.get('supervisor', 'Ari Haerani, S.Pd.SD, M.Pd')}\nNIP. {sch.get('supervisor_nip', '197301211996032001')}").font.size = Pt(8.5)
 
     c2.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
-    c2.paragraphs[0].add_run(f"Mengetahui,\nKepala {sch.get('name', 'SD NEGERI 1 KESAMBI')},\n\n\n\n\n{sch.get('ks', 'Dra. Hj. Siti Maryam, M.Pd')}\nNIP. {sch.get('ks_nip', '197505121998032004')}").font.size = Pt(8.5)
+    c2.paragraphs[0].add_run(f"Mengetahui,\nKepala {sch.get('name', 'SD NEGERI 1 KESAMBI')},\n\n\n\n{head_name}\nNIP. {head_nip}").font.size = Pt(8.5)
 
     bio = io.BytesIO()
     doc.save(bio)
