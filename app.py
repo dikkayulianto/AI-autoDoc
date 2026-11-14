@@ -6,6 +6,18 @@ import json
 import socket
 import zipfile
 import requests
+
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+if hasattr(sys.stderr, 'reconfigure'):
+    try:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 from flask import Flask, request, send_file, jsonify, send_from_directory
 
 # Ensure engine is in python path
@@ -300,8 +312,8 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     ip = get_local_ip()
     print("=" * 60)
-    print("  🚀 AI-autoDoc Local Engine Server Siap Berjalan!")
-    print(f"  📍 Akses Lokal PC:      http://localhost:{port}")
-    print(f"  📱 Akses Jaringan/HP:   http://{ip}:{port}")
+    print("  [*] AI-autoDoc Local Engine Server Siap Berjalan!")
+    print(f"  [-] Akses Lokal PC:      http://localhost:{port}")
+    print(f"  [-] Akses Jaringan/HP:   http://{ip}:{port}")
     print("=" * 60)
     app.run(host='0.0.0.0', port=port, debug=False)

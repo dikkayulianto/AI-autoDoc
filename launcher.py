@@ -6,10 +6,15 @@ import re
 import subprocess
 import webbrowser
 
-# Pastikan output konsol langsung tampil di layar terminal
+# Pastikan output konsol selalu UTF-8 dan tidak buffering
 if hasattr(sys.stdout, 'reconfigure'):
     try:
-        sys.stdout.reconfigure(line_buffering=True)
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
+    except Exception:
+        pass
+if hasattr(sys.stderr, 'reconfigure'):
+    try:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace', line_buffering=True)
     except Exception:
         pass
 
@@ -22,7 +27,7 @@ PORT = 5000
 def kill_existing_on_port(port):
     try:
         cmd = f'netstat -ano | findstr :{port}'
-        output = subprocess.check_output(cmd, shell=True).decode()
+        output = subprocess.check_output(cmd, shell=True).decode(errors='ignore')
         for line in output.strip().splitlines():
             parts = line.split()
             if len(parts) >= 5 and 'LISTENING' in parts:
@@ -46,16 +51,16 @@ def get_local_ip():
 def ensure_cloudflared():
     if os.path.exists(CLOUDFLARED_BIN):
         return True
-    print(" [i] Binary cloudflared.exe belum ada, mengunduh otomatis...")
+    print(" [i] Binary cloudflared.exe belum ada, mengunduh otomatis...", flush=True)
     os.makedirs(os.path.join(CURRENT_DIR, "bin"), exist_ok=True)
     url = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
     try:
         import urllib.request
         urllib.request.urlretrieve(url, CLOUDFLARED_BIN)
-        print(" [i] Binary cloudflared.exe siap digunakan!")
+        print(" [i] Binary cloudflared.exe siap digunakan!", flush=True)
         return True
     except Exception as e:
-        print(f" [!] Gagal mengunduh cloudflared: {e}")
+        print(f" [!] Gagal mengunduh cloudflared: {e}", flush=True)
         return False
 
 def start_flask():
@@ -63,28 +68,40 @@ def start_flask():
     app_py = os.path.join(CURRENT_DIR, "app.py")
     env = os.environ.copy()
     env["PORT"] = str(PORT)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
     f_log = open(FLASK_LOG, "w", encoding="utf-8")
     return subprocess.Popen([python_exe, app_py], cwd=CURRENT_DIR, env=env, stdout=f_log, stderr=subprocess.STDOUT)
 
 def main():
-    print("\n" + "=" * 70)
-    print("   🏛️  SISTEM GENERATOR BUKTI FISIK & MODUL AJAR (AI-AUTODOC)  ")
-    print("         1-Click Launcher (Flask Engine + Cloudflare Tunnel)")
-    print("=" * 70)
+    print("\n" + "=" * 70, flush=True)
+    print("   [+] SISTEM GENERATOR BUKTI FISIK & MODUL AJAR (AI-AUTODOC)  ", flush=True)
+    print("         1-Click Launcher (Flask Engine + Cloudflare Tunnel)", flush=True)
+    print("=" * 70, flush=True)
     
     # 0. Bersihkan port 5000 jika ada proses lama tertinggal
     kill_existing_on_port(PORT)
     
-    # Bersihkan file log tunnel lama jika ada
-    if os.path.exists(LOG_FILE):
-        try:
-            os.remove(LOG_FILE)
-        except Exception:
-            pass
+    # Bersihkan file log lama
+    for f in [LOG_FILE, FLASK_LOG]:
+        if os.path.exists(f):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
 
     print(" [1/3] Menyalakan Web Server Flask (Backend Python)...", flush=True)
     flask_proc = start_flask()
-    time.sleep(1.5)
+    time.sleep(2.0)
+
+    # Cek apakah Flask langsung crash saat startup
+    if flask_proc.poll() is not None:
+        print("\n [!] ERROR: Web server Flask gagal dijalankan!", flush=True)
+        if os.path.exists(FLASK_LOG):
+            with open(FLASK_LOG, "r", encoding="utf-8", errors="ignore") as f:
+                print(f.read())
+        input("\nTekan [ENTER] untuk keluar...")
+        return
     
     local_ip = get_local_ip()
     tunnel_url = None
@@ -126,25 +143,29 @@ def main():
         pass
 
     print("\n" + "=" * 70, flush=True)
-    print("  ✅ SERVER & SISTEM SIAP! BUKA SALAH SATU LINK DI BAWAH:", flush=True)
+    print("  [OK] SERVER & SISTEM SIAP! BUKA SALAH SATU LINK DI BAWAH:", flush=True)
     print("=" * 70, flush=True)
-    print(f"  💻 PC Ini (Localhost)       : http://localhost:{PORT}", flush=True)
-    print(f"  📶 HP/Laptop (Satu Wi-Fi)   : http://{local_ip}:{PORT}", flush=True)
+    print(f"  * PC Ini (Localhost)       : http://localhost:{PORT}", flush=True)
+    print(f"  * HP/Laptop (Satu Wi-Fi)   : http://{local_ip}:{PORT}", flush=True)
     if tunnel_url:
-        print(f"  🌐 Online / Luar Jaringan   : {tunnel_url}", flush=True)
+        print(f"  * Online / Luar Jaringan   : {tunnel_url}", flush=True)
         print("     (Link aman HTTPS di atas bisa dibuka langsung dari HP di mana saja!)", flush=True)
     else:
-        print(f"  🌐 Online / Luar Jaringan   : Sedang proses / Cek http://{local_ip}:{PORT}", flush=True)
+        print(f"  * Online / Luar Jaringan   : Sedang proses / Cek http://{local_ip}:{PORT}", flush=True)
     print("=" * 70, flush=True)
-    print("  💡 Tips: Halaman web otomatis dibuka di peramban (browser) PC Anda.", flush=True)
-    print("  👉 Tekan [CTRL + C] di jendela ini kapan saja untuk mematikan server.", flush=True)
+    print("  Tips: Halaman web otomatis dibuka di browser PC Anda.", flush=True)
+    print("  Tekan [CTRL + C] di jendela ini kapan saja untuk mematikan server.", flush=True)
     print("=" * 70 + "\n", flush=True)
 
     try:
         while True:
             time.sleep(1)
             if flask_proc.poll() is not None:
-                print(" [!] Web server Flask terhenti.", flush=True)
+                print("\n [!] Web server Flask terhenti.", flush=True)
+                if os.path.exists(FLASK_LOG):
+                    with open(FLASK_LOG, "r", encoding="utf-8", errors="ignore") as f:
+                        print(f.read())
+                input("\nTekan [ENTER] untuk keluar...")
                 break
     except KeyboardInterrupt:
         print("\n [i] Mematikan server dan menghentikan tunnel...", flush=True)
@@ -163,7 +184,7 @@ def main():
             subprocess.run("taskkill /F /IM cloudflared.exe", shell=True, capture_output=True)
         except Exception:
             pass
-        print(" [✓] Semua proses berhasil dimatikan dengan bersih. Sampai jumpa!\n", flush=True)
+        print(" [OK] Semua proses dimatikan dengan bersih. Sampai jumpa!\n", flush=True)
 
 if __name__ == '__main__':
     main()

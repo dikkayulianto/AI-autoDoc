@@ -3,6 +3,9 @@ setlocal
 title AI-autoDoc - Generator Bukti Fisik Jabar Beraksi (1-Click System)
 cd /d "%~dp0"
 
+set "PYTHONIOENCODING=utf-8"
+set "PYTHONUTF8=1"
+
 echo ====================================================================
 echo   MENYIAPKAN SISTEM AI-AUTODOC (1-KLIK)
 echo ====================================================================
@@ -45,8 +48,6 @@ pause
 exit /b 1
 
 :end
-if %errorlevel% neq 0 (
-    echo.
-    echo [!] Server berhenti dengan error code %errorlevel%.
-    pause
-)
+echo.
+echo [i] Sesi server telah selesai.
+pause
