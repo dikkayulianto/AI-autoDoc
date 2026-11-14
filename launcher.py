@@ -4,17 +4,38 @@ import time
 import socket
 import re
 import subprocess
-import threading
 import webbrowser
+
+# Pastikan output konsol langsung tampil di layar terminal
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 CLOUDFLARED_BIN = os.path.join(CURRENT_DIR, "bin", "cloudflared.exe")
+LOG_FILE = os.path.join(CURRENT_DIR, "tunnel.log")
+FLASK_LOG = os.path.join(CURRENT_DIR, "flask.log")
 PORT = 5000
+
+def kill_existing_on_port(port):
+    try:
+        cmd = f'netstat -ano | findstr :{port}'
+        output = subprocess.check_output(cmd, shell=True).decode()
+        for line in output.strip().splitlines():
+            parts = line.split()
+            if len(parts) >= 5 and 'LISTENING' in parts:
+                pid = parts[-1]
+                if pid != '0':
+                    subprocess.run(f'taskkill /F /PID {pid}', shell=True, capture_output=True)
+    except Exception:
+        pass
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(('10.255.255.255', 1))
+        s.connect(('8.8.8.8', 80))
         ip = s.getsockname()[0]
     except Exception:
         ip = '127.0.0.1'
@@ -42,15 +63,26 @@ def start_flask():
     app_py = os.path.join(CURRENT_DIR, "app.py")
     env = os.environ.copy()
     env["PORT"] = str(PORT)
-    return subprocess.Popen([python_exe, app_py], cwd=CURRENT_DIR, env=env)
+    f_log = open(FLASK_LOG, "w", encoding="utf-8")
+    return subprocess.Popen([python_exe, app_py], cwd=CURRENT_DIR, env=env, stdout=f_log, stderr=subprocess.STDOUT)
 
 def main():
-    print("\n" + "=" * 68)
-    print("      🏛️  SISTEM GENERATOR BUKTI FISIK JABAR BERAKSI (OPSI 1)  ")
-    print("          Local Python Server & Cloudflare Remote Tunnel")
-    print("=" * 68)
-    print(" [1/3] Menyalakan Web Server Flask (Python-docx native)...")
+    print("\n" + "=" * 70)
+    print("   🏛️  SISTEM GENERATOR BUKTI FISIK & MODUL AJAR (AI-AUTODOC)  ")
+    print("         1-Click Launcher (Flask Engine + Cloudflare Tunnel)")
+    print("=" * 70)
     
+    # 0. Bersihkan port 5000 jika ada proses lama tertinggal
+    kill_existing_on_port(PORT)
+    
+    # Bersihkan file log tunnel lama jika ada
+    if os.path.exists(LOG_FILE):
+        try:
+            os.remove(LOG_FILE)
+        except Exception:
+            pass
+
+    print(" [1/3] Menyalakan Web Server Flask (Backend Python)...", flush=True)
     flask_proc = start_flask()
     time.sleep(1.5)
     
@@ -59,63 +91,79 @@ def main():
     cloudflared_proc = None
     
     if ensure_cloudflared():
-        print(" [2/3] Membuka Terowongan Online Cloudflare Tunnel (Akses HP/Luar)...")
+        print(" [2/3] Menghubungkan Cloudflare Tunnel (Akses Luar / HP Tanpa Batas)...", flush=True)
         try:
             cloudflared_proc = subprocess.Popen(
-                [CLOUDFLARED_BIN, "tunnel", "--url", f"http://127.0.0.1:{PORT}"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
+                [CLOUDFLARED_BIN, "tunnel", "--url", f"http://127.0.0.1:{PORT}", "--logfile", LOG_FILE],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
                 cwd=CURRENT_DIR
             )
             
-            # Read lines to find the trycloudflare url
+            # Polling file log tunnel untuk menangkap URL trycloudflare.com
             start_time = time.time()
-            while time.time() - start_time < 12:
-                line = cloudflared_proc.stdout.readline()
-                if not line:
-                    break
-                match = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com', line)
-                if match:
-                    tunnel_url = match.group(0)
-                    break
+            while time.time() - start_time < 20:
+                if os.path.exists(LOG_FILE):
+                    try:
+                        with open(LOG_FILE, "r", encoding="utf-8", errors="ignore") as f:
+                            content = f.read()
+                            match = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com', content)
+                            if match:
+                                tunnel_url = match.group(0)
+                                break
+                    except Exception:
+                        pass
+                time.sleep(0.5)
         except Exception as e:
-            print(f" [!] Gagal membuka cloudflared: {e}")
+            print(f" [!] Catatan Cloudflare: {e}", flush=True)
     else:
-        print(" [!] File bin/cloudflared.exe tidak ditemukan. Mode hanya jaringan lokal.")
+        print(" [!] File bin/cloudflared.exe tidak ditemukan. Berjalan dalam mode jaringan lokal.", flush=True)
 
-    print(" [3/3] Membuka peramban (browser) otomatis...")
+    print(" [3/3] Membuka browser default otomatis...", flush=True)
     try:
         webbrowser.open(f"http://localhost:{PORT}")
     except Exception:
         pass
 
-    print("\n" + "#" * 68)
-    print("  ✅ SERVER SIAP & AKTIF! SILAKAN BUKA SALAH SATU TAUTAN BERIKUT:")
-    print("#" * 68)
-    print(f"  💻 PC Ini (Lokal)           : http://localhost:{PORT}")
-    print(f"  📶 HP / Laptop (Satu Wi-Fi) : http://{local_ip}:{PORT}")
+    print("\n" + "=" * 70, flush=True)
+    print("  ✅ SERVER & SISTEM SIAP! BUKA SALAH SATU LINK DI BAWAH:", flush=True)
+    print("=" * 70, flush=True)
+    print(f"  💻 PC Ini (Localhost)       : http://localhost:{PORT}", flush=True)
+    print(f"  📶 HP/Laptop (Satu Wi-Fi)   : http://{local_ip}:{PORT}", flush=True)
     if tunnel_url:
-        print(f"  🌐 Online / Luar Rumah      : {tunnel_url}")
-        print("     (Tautan aman HTTPS di atas bisa dibuka langsung dari HP di mana saja!)")
-    print("#" * 68)
-    print("\n  👉 Tekan [CTRL + C] di jendela ini kapan saja untuk mematikan server.\n")
+        print(f"  🌐 Online / Luar Jaringan   : {tunnel_url}", flush=True)
+        print("     (Link aman HTTPS di atas bisa dibuka langsung dari HP di mana saja!)", flush=True)
+    else:
+        print(f"  🌐 Online / Luar Jaringan   : Sedang proses / Cek http://{local_ip}:{PORT}", flush=True)
+    print("=" * 70, flush=True)
+    print("  💡 Tips: Halaman web otomatis dibuka di peramban (browser) PC Anda.", flush=True)
+    print("  👉 Tekan [CTRL + C] di jendela ini kapan saja untuk mematikan server.", flush=True)
+    print("=" * 70 + "\n", flush=True)
 
     try:
         while True:
             time.sleep(1)
             if flask_proc.poll() is not None:
-                print("Server Flask berhenti.")
+                print(" [!] Web server Flask terhenti.", flush=True)
                 break
     except KeyboardInterrupt:
-        print("\nMematikan server dan terowongan...")
+        print("\n [i] Mematikan server dan menghentikan tunnel...", flush=True)
     finally:
         if flask_proc:
-            flask_proc.terminate()
+            try:
+                flask_proc.terminate()
+            except Exception:
+                pass
         if cloudflared_proc:
-            cloudflared_proc.terminate()
-        print("Selesai. Sampai jumpa!")
+            try:
+                cloudflared_proc.terminate()
+            except Exception:
+                pass
+        try:
+            subprocess.run("taskkill /F /IM cloudflared.exe", shell=True, capture_output=True)
+        except Exception:
+            pass
+        print(" [✓] Semua proses berhasil dimatikan dengan bersih. Sampai jumpa!\n", flush=True)
 
 if __name__ == '__main__':
     main()
